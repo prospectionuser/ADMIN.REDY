@@ -1,0 +1,5 @@
+{
+  "name": "Redy Admin Dashboard",
+  "description": "Admin interface for Redy cosmetics brand, managing products and orders via Supabase.",
+  "requestFramePermissions": []
+}
