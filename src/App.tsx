@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Products from './components/Products';
 import Orders from './components/Orders';
+import SiteSettings from './components/SiteSettings';
 import { Product, Order, View } from './types';
 import { Loader2 } from 'lucide-react';
 
@@ -104,6 +105,7 @@ export default function App() {
           {currentView === 'dashboard' && <Dashboard products={products} orders={orders} />}
           {currentView === 'products' && <Products products={products} onRefresh={fetchData} />}
           {currentView === 'orders' && <Orders orders={orders} onRefresh={fetchData} />}
+          {currentView === 'settings' && <SiteSettings />}
         </div>
       </main>
     </div>

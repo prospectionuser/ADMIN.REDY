@@ -21,4 +21,9 @@ export interface Order {
   product?: Product;
 }
 
-export type View = 'dashboard' | 'products' | 'orders';
+export interface SiteSetting {
+  key: string;
+  value: string;
+}
+
+export type View = 'dashboard' | 'products' | 'orders' | 'settings';

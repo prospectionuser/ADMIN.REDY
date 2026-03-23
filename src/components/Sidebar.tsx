@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Package, ShoppingCart, LogOut, X } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, LogOut, X, Settings } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { View } from '../types';
 
@@ -15,6 +15,7 @@ export default function Sidebar({ currentView, setView, isOpen, onClose }: Sideb
     { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'products' as const, label: 'Produits', icon: Package },
     { id: 'orders' as const, label: 'Commandes', icon: ShoppingCart },
+    { id: 'settings' as const, label: 'Paramètres', icon: Settings },
   ];
 
   const handleLogout = async () => {
