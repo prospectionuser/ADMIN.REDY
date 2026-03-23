@@ -15,8 +15,8 @@ export default function Products({ products, onRefresh }: ProductsProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -24,6 +24,8 @@ export default function Products({ products, onRefresh }: ProductsProps) {
     price: 0,
     stock: 0,
     image_url: '',
+    gallery_urls: [] as string[],
+    video_url: '',
     is_active: true,
   });
 
@@ -41,27 +43,69 @@ export default function Products({ products, onRefresh }: ProductsProps) {
         price: product.price,
         stock: product.stock,
         image_url: product.image_url || '',
+        gallery_urls: product.gallery_urls || [],
+        video_url: product.video_url || '',
         is_active: product.is_active,
       });
-      setImagePreview(product.image_url || null);
+      setGalleryPreviews(product.gallery_urls || []);
     } else {
       setEditingProduct(null);
-      setFormData({ name: '', description: '', price: 0, stock: 0, image_url: '', is_active: true });
-      setImagePreview(null);
+      setFormData({ 
+        name: '', 
+        description: '', 
+        price: 0, 
+        stock: 0, 
+        image_url: '', 
+        gallery_urls: [],
+        video_url: '',
+        is_active: true 
+      });
+      setGalleryPreviews([]);
     }
-    setImageFile(null);
+    setImageFiles([]);
     setIsModalOpen(true);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
+    const fileList = e.target.files;
+    if (!fileList) return;
+    
+    const files = Array.from(fileList);
+    setImageFiles(prev => [...prev, ...files]);
+    
+    files.forEach((file: File) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreview(reader.result as string);
+        setGalleryPreviews(prev => [...prev, reader.result as string]);
       };
       reader.readAsDataURL(file);
+    });
+  };
+
+  const removeGalleryImage = (index: number) => {
+    // If it's an existing URL
+    const existingUrlsCount = formData.gallery_urls.length;
+    
+    if (index < existingUrlsCount) {
+      const newUrls = [...formData.gallery_urls];
+      newUrls.splice(index, 1);
+      setFormData({ ...formData, gallery_urls: newUrls });
+      setGalleryPreviews(prev => {
+        const next = [...prev];
+        next.splice(index, 1);
+        return next;
+      });
+    } else {
+      // It's a newly added file
+      const fileIndex = index - existingUrlsCount;
+      const newFiles = [...imageFiles];
+      newFiles.splice(fileIndex, 1);
+      setImageFiles(newFiles);
+      setGalleryPreviews(prev => {
+        const next = [...prev];
+        next.splice(index, 1);
+        return next;
+      });
     }
   };
 
@@ -93,14 +137,19 @@ export default function Products({ products, onRefresh }: ProductsProps) {
     setIsSubmitting(true);
 
     try {
-      let finalImageUrl = formData.image_url;
+      let uploadedUrls: string[] = [];
 
-      if (imageFile) {
-        finalImageUrl = await uploadImage(imageFile);
+      if (imageFiles.length > 0) {
+        const uploadPromises = imageFiles.map(file => uploadImage(file));
+        uploadedUrls = await Promise.all(uploadPromises);
       }
+
+      const finalGalleryUrls = [...formData.gallery_urls, ...uploadedUrls];
+      const finalImageUrl = finalGalleryUrls.length > 0 ? finalGalleryUrls[0] : '';
 
       const payload = {
         ...formData,
+        gallery_urls: finalGalleryUrls,
         image_url: finalImageUrl,
       };
 
@@ -311,26 +360,47 @@ export default function Products({ products, onRefresh }: ProductsProps) {
 
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1">Image du produit</label>
-                    <div 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="aspect-square rounded-2xl border-2 border-dashed border-stone-200 hover:border-stone-400 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center bg-stone-50 group"
-                    >
-                      {imagePreview ? (
-                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      ) : (
-                        <>
-                          <Upload size={32} className="text-stone-300 group-hover:text-stone-500 transition-colors mb-2" />
-                          <span className="text-xs font-medium text-stone-400 group-hover:text-stone-600">Cliquez pour uploader</span>
-                        </>
-                      )}
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Galerie Photos</label>
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      {galleryPreviews.map((url, index) => (
+                        <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-stone-200 group">
+                          <img src={url} alt={`Preview ${index}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <button
+                            type="button"
+                            onClick={() => removeGalleryImage(index)}
+                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="aspect-square rounded-xl border-2 border-dashed border-stone-200 hover:border-stone-400 transition-all flex flex-col items-center justify-center bg-stone-50 group"
+                      >
+                        <Upload size={20} className="text-stone-300 group-hover:text-stone-500 transition-colors" />
+                        <span className="text-[10px] font-medium text-stone-400 group-hover:text-stone-600 mt-1">Ajouter</span>
+                      </button>
                     </div>
                     <input
                       type="file"
                       ref={fileInputRef}
                       onChange={handleFileChange}
                       accept="image/*"
+                      multiple
                       className="hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Lien Vidéo (URL)</label>
+                    <input
+                      type="url"
+                      value={formData.video_url}
+                      onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 focus:border-transparent outline-none"
+                      placeholder="https://youtube.com/..."
                     />
                   </div>
                 </div>

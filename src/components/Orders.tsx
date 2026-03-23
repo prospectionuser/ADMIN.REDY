@@ -1,12 +1,22 @@
 import React, { useState } from 'react';
-import { Phone, MapPin, User, Package, Eye, X, MessageCircle } from 'lucide-react';
+import { Phone, MapPin, User, Package, Eye, X, MessageCircle, Plus, ShoppingCart, DollarSign, Hash } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Order } from '../types';
+import { Order, Product } from '../types';
 
 interface OrdersProps {
   orders: Order[];
+  products: Product[];
   onRefresh: () => void;
 }
+
+const ALGERIA_WILAYAS = [
+  'Adrar', 'Chlef', 'Laghouat', 'Oum El Bouaghi', 'Batna', 'Béjaïa', 'Biskra', 'Béchar', 'Blida', 'Bouira',
+  'Tamanrasset', 'Tébessa', 'Tlemcen', 'Tiaret', 'Tizi Ouzou', 'Alger', 'Djelfa', 'Jijel', 'Sétif', 'Saïda',
+  'Skikda', 'Sidi Bel Abbès', 'Annabba', 'Guelma', 'Constantine', 'Médéa', 'Mostaganem', 'M\'Sila', 'Mascara', 'Ouargla',
+  'Oran', 'El Bayadh', 'Illizi', 'Bordj Bou Arreridj', 'Boumerdès', 'El Tarf', 'Tindouf', 'Tissemsilt', 'El Oued', 'Khenchela',
+  'Souk Ahras', 'Tipaza', 'Mila', 'Aïn Defla', 'Naâma', 'Aïn Témouchent', 'Ghardaïa', 'Relizane', 'Timimoun', 'Bordj Badji Mokhtar',
+  'Ouled Djellal', 'Béni Abbès', 'In Salah', 'In Guezzam', 'Touggourt', 'Djanet', 'El M\'Ghair', 'El Meniaa'
+];
 
 const WhatsAppIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
@@ -14,10 +24,23 @@ const WhatsAppIcon = () => (
   </svg>
 );
 
-export default function Orders({ orders, onRefresh }: OrdersProps) {
+export default function Orders({ orders, products, onRefresh }: OrdersProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const statusOptions = ['Nouveau', 'En préparation', 'Expédié', 'Livré', 'Annulé'] as const;
+
+  // New Order Form State
+  const [newOrder, setNewOrder] = useState({
+    customer_name: '',
+    customer_phone: '',
+    customer_address: '',
+    wilaya: 'Alger',
+    product_id: '',
+    quantity: 1,
+    total_price: 0,
+    status: 'Nouveau' as Order['status']
+  });
 
   const showNotification = (message: string) => {
     setNotification(message);
@@ -26,11 +49,18 @@ export default function Orders({ orders, onRefresh }: OrdersProps) {
 
   const handleStatusChange = async (orderId: string, newStatus: Order['status']) => {
     try {
-      const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      const { error } = await supabase.from('orders').update({ 
+        status: newStatus,
+        product_id: order.product_id, // Explicitly send product_id
+        quantity: order.quantity || 1 // Explicitly send quantity
+      }).eq('id', orderId);
+      
       if (error) throw error;
       showNotification('Statut mis à jour');
       
-      // Update selected order if it's the one being modified
       if (selectedOrder && selectedOrder.id === orderId) {
         setSelectedOrder({ ...selectedOrder, status: newStatus });
       }
@@ -41,6 +71,56 @@ export default function Orders({ orders, onRefresh }: OrdersProps) {
     }
   };
 
+  const handleCreateOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (!newOrder.product_id) {
+        alert('Veuillez sélectionner un produit');
+        return;
+      }
+
+      const { error } = await supabase.from('orders').insert([newOrder]);
+      if (error) throw error;
+
+      showNotification('Commande créée avec succès');
+      setIsNewOrderModalOpen(false);
+      setNewOrder({
+        customer_name: '',
+        customer_phone: '',
+        customer_address: '',
+        wilaya: 'Alger',
+        product_id: '',
+        quantity: 1,
+        total_price: 0,
+        status: 'Nouveau'
+      });
+      onRefresh();
+    } catch (error: any) {
+      console.error('Error creating order:', error);
+      alert('Erreur lors de la création de la commande');
+    }
+  };
+
+  const handleProductSelect = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (product) {
+      setNewOrder({
+        ...newOrder,
+        product_id: productId,
+        total_price: product.price * newOrder.quantity
+      });
+    }
+  };
+
+  const handleQuantityChange = (qty: number) => {
+    const product = products.find(p => p.id === newOrder.product_id);
+    setNewOrder({
+      ...newOrder,
+      quantity: qty,
+      total_price: product ? product.price * qty : 0
+    });
+  };
+
   return (
     <div className="space-y-8">
       <header className="flex items-center justify-between">
@@ -48,11 +128,20 @@ export default function Orders({ orders, onRefresh }: OrdersProps) {
           <h2 className="text-3xl font-serif font-medium text-stone-900">Commandes</h2>
           <p className="text-stone-500">Suivez et gérez les commandes de vos clients.</p>
         </div>
-        {notification && (
-          <div className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl text-sm font-medium border border-emerald-100 animate-in fade-in slide-in-from-top-4 duration-300">
-            {notification}
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          {notification && (
+            <div className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl text-sm font-medium border border-emerald-100 animate-in fade-in slide-in-from-top-4 duration-300">
+              {notification}
+            </div>
+          )}
+          <button
+            onClick={() => setIsNewOrderModalOpen(true)}
+            className="bg-stone-900 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-stone-800 transition-all flex items-center gap-2 shadow-lg"
+          >
+            <Plus size={20} />
+            Nouvelle Commande
+          </button>
+        </div>
       </header>
 
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
@@ -62,7 +151,7 @@ export default function Orders({ orders, onRefresh }: OrdersProps) {
             <tr className="bg-stone-50 border-bottom border-stone-200">
               <th className="px-6 py-4 text-xs font-medium text-stone-500 uppercase tracking-widest italic">Client</th>
               <th className="px-6 py-4 text-xs font-medium text-stone-500 uppercase tracking-widest italic">Produit</th>
-              <th className="px-6 py-4 text-xs font-medium text-stone-500 uppercase tracking-widest italic">Adresse</th>
+              <th className="px-6 py-4 text-xs font-medium text-stone-500 uppercase tracking-widest italic">Localisation</th>
               <th className="px-6 py-4 text-xs font-medium text-stone-500 uppercase tracking-widest italic">Statut</th>
               <th className="px-6 py-4 text-xs font-medium text-stone-500 uppercase tracking-widest italic text-right">Actions</th>
             </tr>
@@ -93,13 +182,21 @@ export default function Orders({ orders, onRefresh }: OrdersProps) {
                         </div>
                       )}
                     </div>
-                    {order.product?.name || 'Produit inconnu'}
+                    <div className="flex flex-col">
+                      <span className="font-medium">{order.product?.name || 'Produit inconnu'}</span>
+                      <span className="text-xs text-stone-400">Qté: {order.quantity || 1}</span>
+                    </div>
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="flex items-start gap-2 text-stone-500 text-sm max-w-xs">
-                    <MapPin size={14} className="text-stone-400 mt-1 shrink-0" />
-                    {order.customer_address || 'Adresse non renseignée'}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-stone-900 text-sm font-medium">
+                      <MapPin size={14} className="text-stone-400" />
+                      {order.wilaya || 'Wilaya non renseignée'}
+                    </div>
+                    <div className="text-xs text-stone-400 truncate max-w-[150px]">
+                      {order.customer_address}
+                    </div>
                   </div>
                 </td>
                 <td className="px-6 py-4">
@@ -129,6 +226,164 @@ export default function Orders({ orders, onRefresh }: OrdersProps) {
       </div>
     </div>
 
+      {/* New Order Modal */}
+      {isNewOrderModalOpen && (
+        <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl my-8">
+            <div className="px-8 py-6 border-b border-stone-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-stone-100 rounded-lg">
+                  <ShoppingCart size={20} className="text-stone-600" />
+                </div>
+                <h3 className="text-xl font-serif font-medium text-stone-900">Nouvelle Commande</h3>
+              </div>
+              <button onClick={() => setIsNewOrderModalOpen(false)} className="text-stone-400 hover:text-stone-900">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateOrder} className="p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Client Info */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-stone-400 uppercase tracking-widest italic border-b border-stone-100 pb-2">Informations Client</h4>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Nom du Client / Magasin</label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={16} />
+                      <input
+                        required
+                        type="text"
+                        value={newOrder.customer_name}
+                        onChange={(e) => setNewOrder({ ...newOrder, customer_name: e.target.value })}
+                        className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                        placeholder="Ex: Boutique Ahmed"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Téléphone</label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={16} />
+                      <input
+                        required
+                        type="tel"
+                        value={newOrder.customer_phone}
+                        onChange={(e) => setNewOrder({ ...newOrder, customer_phone: e.target.value })}
+                        className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                        placeholder="05XXXXXXXX"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Wilaya</label>
+                    <select
+                      value={newOrder.wilaya}
+                      onChange={(e) => setNewOrder({ ...newOrder, wilaya: e.target.value })}
+                      className="w-full px-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                    >
+                      {ALGERIA_WILAYAS.map(w => <option key={w} value={w}>{w}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Adresse précise</label>
+                    <textarea
+                      value={newOrder.customer_address}
+                      onChange={(e) => setNewOrder({ ...newOrder, customer_address: e.target.value })}
+                      className="w-full px-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-stone-900 outline-none transition-all h-20 resize-none"
+                      placeholder="Rue, Quartier, Commune..."
+                    />
+                  </div>
+                </div>
+
+                {/* Product Info */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-stone-400 uppercase tracking-widest italic border-b border-stone-100 pb-2">Détails Commande</h4>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Produit</label>
+                    <select
+                      required
+                      value={newOrder.product_id}
+                      onChange={(e) => handleProductSelect(e.target.value)}
+                      className="w-full px-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                    >
+                      <option value="">Sélectionner un produit</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>{p.name} ({p.stock} en stock)</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-stone-700 mb-1">Quantité</label>
+                      <div className="relative">
+                        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={16} />
+                        <input
+                          required
+                          type="number"
+                          min="1"
+                          value={newOrder.quantity}
+                          onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 0)}
+                          className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-stone-700 mb-1">Statut Initial</label>
+                      <select
+                        value={newOrder.status}
+                        onChange={(e) => setNewOrder({ ...newOrder, status: e.target.value as Order['status'] })}
+                        className="w-full px-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                      >
+                        {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">Prix Total (DA)</label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={16} />
+                      <input
+                        required
+                        type="number"
+                        value={newOrder.total_price}
+                        onChange={(e) => setNewOrder({ ...newOrder, total_price: parseInt(e.target.value) || 0 })}
+                        className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-stone-900 outline-none transition-all font-mono font-bold text-lg"
+                      />
+                    </div>
+                    <p className="text-[10px] text-stone-400 mt-1 italic">Vous pouvez modifier le prix pour les ventes en gros.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6 flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => setIsNewOrderModalOpen(false)}
+                  className="flex-1 px-6 py-3 border border-stone-200 text-stone-600 rounded-xl font-medium hover:bg-stone-50 transition-all"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-stone-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-stone-800 transition-all shadow-lg"
+                >
+                  Valider la commande
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Order Details Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden">
@@ -149,10 +404,15 @@ export default function Orders({ orders, onRefresh }: OrdersProps) {
                       {selectedOrder.customer_name}
                     </div>
                     <div className="mt-2">
-                      <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block mb-0.5">Adresse de livraison :</label>
-                      <div className="flex items-start gap-2 text-stone-600 text-sm bg-stone-50 p-2 rounded-lg border border-stone-100">
-                        <MapPin size={14} className="text-stone-400 mt-0.5 shrink-0" />
-                        {selectedOrder.customer_address || 'Adresse non renseignée'}
+                      <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block mb-0.5">Localisation :</label>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-stone-900 text-sm font-medium">
+                          <MapPin size={14} className="text-stone-400" />
+                          {selectedOrder.wilaya}
+                        </div>
+                        <div className="flex items-start gap-2 text-stone-600 text-sm bg-stone-50 p-2 rounded-lg border border-stone-100">
+                          {selectedOrder.customer_address || 'Adresse non renseignée'}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -217,8 +477,9 @@ export default function Orders({ orders, onRefresh }: OrdersProps) {
                         </div>
                       )}
                     </div>
-                    <div className="font-medium text-stone-900">
-                      {selectedOrder.product?.name || 'Produit inconnu'}
+                    <div className="flex flex-col">
+                      <span className="font-medium text-stone-900">{selectedOrder.product?.name || 'Produit inconnu'}</span>
+                      <span className="text-xs text-stone-400">Quantité: {selectedOrder.quantity || 1}</span>
                     </div>
                   </div>
                 </div>
