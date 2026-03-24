@@ -3,10 +3,11 @@ export interface Product {
   name: string;
   description?: string;
   price: number;
-  stock: number;
+  stock_quantity: number;
   image_url?: string;
   gallery_urls?: string[];
   video_url?: string;
+  category?: string;
   is_active: boolean;
   created_at: string;
 }
@@ -28,6 +29,13 @@ export interface Order {
 export interface SiteSetting {
   key: string;
   value: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  created_at: string;
 }
 
 export type View = 'dashboard' | 'products' | 'orders' | 'settings';

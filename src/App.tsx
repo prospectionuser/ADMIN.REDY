@@ -7,7 +7,7 @@ import Dashboard from './components/Dashboard';
 import Products from './components/Products';
 import Orders from './components/Orders';
 import SiteSettings from './components/SiteSettings';
-import { Product, Order, View } from './types';
+import { Product, Order, View, Category } from './types';
 import { Loader2 } from 'lucide-react';
 
 export default function App() {
@@ -18,6 +18,7 @@ export default function App() {
   
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
 
   useEffect(() => {
@@ -37,13 +38,15 @@ export default function App() {
     if (!session) return;
     setDataLoading(true);
     
-    const [productsRes, ordersRes] = await Promise.all([
+    const [productsRes, ordersRes, categoriesRes] = await Promise.all([
       supabase.from('products').select('*').order('created_at', { ascending: false }),
-      supabase.from('orders').select('*, product:products(*)').order('created_at', { ascending: false })
+      supabase.from('orders').select('*, product:products(*)').order('created_at', { ascending: false }),
+      supabase.from('categories').select('*').order('name', { ascending: true })
     ]);
 
     if (productsRes.data) setProducts(productsRes.data);
     if (ordersRes.data) setOrders(ordersRes.data);
+    if (categoriesRes.data) setCategories(categoriesRes.data);
     
     setDataLoading(false);
   };
@@ -103,9 +106,9 @@ export default function App() {
           )}
 
           {currentView === 'dashboard' && <Dashboard products={products} orders={orders} />}
-          {currentView === 'products' && <Products products={products} onRefresh={fetchData} />}
+          {currentView === 'products' && <Products products={products} categories={categories} onRefresh={fetchData} />}
           {currentView === 'orders' && <Orders orders={orders} products={products} onRefresh={fetchData} />}
-          {currentView === 'settings' && <SiteSettings />}
+          {currentView === 'settings' && <SiteSettings categories={categories} onRefresh={fetchData} />}
         </div>
       </main>
     </div>

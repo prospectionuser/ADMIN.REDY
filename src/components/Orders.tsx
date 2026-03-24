@@ -314,7 +314,7 @@ export default function Orders({ orders, products, onRefresh }: OrdersProps) {
                     >
                       <option value="">Sélectionner un produit</option>
                       {products.map(p => (
-                        <option key={p.id} value={p.id}>{p.name} ({p.stock} en stock)</option>
+                        <option key={p.id} value={p.id}>{p.name} ({p.stock_quantity} en stock)</option>
                       ))}
                     </select>
                   </div>

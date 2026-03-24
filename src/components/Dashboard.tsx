@@ -31,8 +31,8 @@ export default function Dashboard({ products, orders }: DashboardProps) {
     const totalRevenue = deliveredOrders.reduce((acc, o) => acc + o.total_price, 0);
     const totalOrders = filteredOrders.length;
     const activeProducts = products.filter(p => p.is_active).length;
-    const lowStockCount = products.filter(p => p.stock < 10).length;
-    const totalStock = products.reduce((acc, p) => acc + p.stock, 0);
+    const lowStockCount = products.filter(p => p.stock_quantity < 10).length;
+    const totalStock = products.reduce((acc, p) => acc + p.stock_quantity, 0);
 
     return [
       { label: 'Chiffre d\'Affaires', value: `${Math.round(totalRevenue).toLocaleString()} DA`, icon: DollarSign, color: 'bg-emerald-50 text-emerald-600' },
@@ -55,7 +55,7 @@ export default function Dashboard({ products, orders }: DashboardProps) {
         name: product.name,
         sales: totalSales,
         revenue: revenue,
-        stock: product.stock
+        stock_quantity: product.stock_quantity
       };
     }).sort((a, b) => b.revenue - a.revenue);
   }, [products, filteredOrders]);
@@ -175,14 +175,14 @@ export default function Dashboard({ products, orders }: DashboardProps) {
           </div>
           
           <div className="space-y-4">
-            {products.filter(p => p.stock < 10).length > 0 ? (
-              products.filter(p => p.stock < 10).slice(0, 6).map((product) => (
+            {products.filter(p => p.stock_quantity < 10).length > 0 ? (
+              products.filter(p => p.stock_quantity < 10).slice(0, 6).map((product) => (
                 <div key={product.id} className="flex items-center justify-between p-3 bg-amber-50/30 rounded-xl border border-amber-100">
                   <div className="flex flex-col">
                     <span className="text-stone-900 font-medium text-sm">{product.name}</span>
                     <span className="text-[10px] text-amber-600 font-bold uppercase tracking-widest">Rupture proche</span>
                   </div>
-                  <span className="text-sm font-mono font-bold text-amber-700">{product.stock}</span>
+                  <span className="text-sm font-mono font-bold text-amber-700">{product.stock_quantity}</span>
                 </div>
               ))
             ) : (
@@ -217,14 +217,14 @@ export default function Dashboard({ products, orders }: DashboardProps) {
                   <td className="px-6 py-4 font-medium text-stone-900">{perf.name}</td>
                   <td className="px-6 py-4 text-center text-stone-600 font-mono">{perf.sales}</td>
                   <td className="px-6 py-4 text-center text-stone-900 font-mono font-medium">{Math.round(perf.revenue).toLocaleString()} DA</td>
-                  <td className="px-6 py-4 text-center text-stone-600 font-mono">{perf.stock}</td>
+                  <td className="px-6 py-4 text-center text-stone-600 font-mono">{perf.stock_quantity}</td>
                   <td className="px-6 py-4 text-right">
                     <span className={`inline-flex px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-                      perf.stock === 0 ? 'bg-red-50 text-red-600' :
-                      perf.stock < 10 ? 'bg-amber-50 text-amber-600' :
+                      perf.stock_quantity === 0 ? 'bg-red-50 text-red-600' :
+                      perf.stock_quantity < 10 ? 'bg-amber-50 text-amber-600' :
                       'bg-emerald-50 text-emerald-600'
                     }`}>
-                      {perf.stock === 0 ? 'Épuisé' : perf.stock < 10 ? 'Faible' : 'En stock'}
+                      {perf.stock_quantity === 0 ? 'Épuisé' : perf.stock_quantity < 10 ? 'Faible' : 'En stock'}
                     </span>
                   </td>
                 </tr>
