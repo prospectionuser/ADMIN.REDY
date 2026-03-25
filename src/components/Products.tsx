@@ -31,12 +31,17 @@ export default function Products({ products, categories, onRefresh }: ProductsPr
     gallery_urls: [] as string[],
     video_url: '',
     category: '',
+    category_id: '',
     is_active: true,
   });
 
   useEffect(() => {
-    if (categories.length > 0 && !formData.category) {
-      setFormData(prev => ({ ...prev, category: categories[0].name }));
+    if (categories.length > 0 && !formData.category_id) {
+      setFormData(prev => ({ 
+        ...prev, 
+        category: categories[0].name,
+        category_id: categories[0].id 
+      }));
     }
   }, [categories]);
 
@@ -57,6 +62,7 @@ export default function Products({ products, categories, onRefresh }: ProductsPr
         gallery_urls: product.gallery_urls || [],
         video_url: product.video_url || '',
         category: product.category || (categories.length > 0 ? categories[0].name : ''),
+        category_id: product.category_id || (categories.length > 0 ? categories[0].id : ''),
         is_active: product.is_active,
       });
       setGalleryPreviews(product.gallery_urls || []);
@@ -72,6 +78,7 @@ export default function Products({ products, categories, onRefresh }: ProductsPr
         gallery_urls: [],
         video_url: '',
         category: categories.length > 0 ? categories[0].name : '',
+        category_id: categories.length > 0 ? categories[0].id : '',
         is_active: true 
       });
       setGalleryPreviews([]);
@@ -190,6 +197,8 @@ export default function Products({ products, categories, onRefresh }: ProductsPr
         image_url: finalImageUrl,
         video_url: uploadedVideoUrl,
       };
+
+      console.log('Données envoyées :', payload);
 
       if (editingProduct) {
         const { error } = await supabase.from('products').update(payload).eq('id', editingProduct.id);
@@ -370,12 +379,19 @@ export default function Products({ products, categories, onRefresh }: ProductsPr
                   <div>
                     <label className="block text-sm font-medium text-stone-700 mb-1">Catégorie</label>
                     <select
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      value={formData.category_id}
+                      onChange={(e) => {
+                        const selectedCategory = categories.find(c => c.id === e.target.value);
+                        setFormData({ 
+                          ...formData, 
+                          category_id: e.target.value,
+                          category: selectedCategory ? selectedCategory.name : ''
+                        });
+                      }}
                       className="w-full px-4 py-2 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 focus:border-transparent outline-none bg-white"
                     >
                       {categories.map((category) => (
-                        <option key={category.id} value={category.name}>
+                        <option key={category.id} value={category.id}>
                           {category.name}
                         </option>
                       ))}

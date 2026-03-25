@@ -76,14 +76,6 @@ export default function Dashboard({ products, orders }: DashboardProps) {
         </div>
         
         <div className="flex flex-wrap items-center gap-4">
-          <button 
-            className="bg-stone-900 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-lg hover:bg-stone-800 transition-all flex items-center gap-2"
-            onClick={() => window.open(`https://wa.me/213000000000?text=${encodeURIComponent('Bonjour, je souhaite passer une commande en gros.')}`, '_blank')}
-          >
-            <Package size={18} />
-            Commande en gros
-          </button>
-
           <div className="flex items-center bg-white border border-stone-200 rounded-xl p-1 shadow-sm">
             {(['day', 'week', 'month', 'all'] as const).map((filter) => (
               <button

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Loader2, Image as ImageIcon, Trash2, Edit2, Plus, X, Check } from 'lucide-react';
+import { Upload, Loader2, Image as ImageIcon, Trash2, Edit2, Plus, X, Check, Package, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Category } from '../types';
 
@@ -12,6 +12,8 @@ export default function SiteSettings({ categories, onRefresh }: SiteSettingsProp
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [heroUrl, setHeroUrl] = useState<string>('');
   const [heroBgUrl, setHeroBgUrl] = useState<string>('');
+  const [heroTitle, setHeroTitle] = useState<string>('');
+  const [heroSubtitle, setHeroSubtitle] = useState<string>('');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editCategoryName, setEditCategoryName] = useState('');
@@ -20,6 +22,7 @@ export default function SiteSettings({ categories, onRefresh }: SiteSettingsProp
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingHero, setUploadingHero] = useState(false);
   const [uploadingHeroBg, setUploadingHeroBg] = useState(false);
+  const [isSavingHero, setIsSavingHero] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -41,9 +44,14 @@ export default function SiteSettings({ categories, onRefresh }: SiteSettingsProp
         const logo = data.find(s => s.key === 'logo');
         const hero = data.find(s => s.key === 'hero_image');
         const heroBg = data.find(s => s.key === 'hero_background_url');
+        const title = data.find(s => s.key === 'hero_title');
+        const subtitle = data.find(s => s.key === 'hero_subtitle');
+        
         if (logo) setLogoUrl(logo.value);
         if (hero) setHeroUrl(hero.value);
         if (heroBg) setHeroBgUrl(heroBg.value);
+        if (title) setHeroTitle(title.value);
+        if (subtitle) setHeroSubtitle(subtitle.value);
       }
     } catch (error: any) {
       console.error('Error fetching settings:', error);
@@ -171,6 +179,29 @@ export default function SiteSettings({ categories, onRefresh }: SiteSettingsProp
     return data.publicUrl;
   };
 
+  const handleSaveHeroSettings = async () => {
+    setIsSavingHero(true);
+    try {
+      const settings = [
+        { key: 'hero_title', value: heroTitle },
+        { key: 'hero_subtitle', value: heroSubtitle },
+        { key: 'hero_background_url', value: heroBgUrl }
+      ];
+
+      const { error } = await supabase
+        .from('site_settings')
+        .upsert(settings, { onConflict: 'key' });
+
+      if (error) throw error;
+      showNotification('success', 'Configuration du Hero enregistrée !');
+    } catch (error: any) {
+      console.error('Error saving hero settings:', error);
+      showNotification('error', `Erreur: ${error.message}`);
+    } finally {
+      setIsSavingHero(false);
+    }
+  };
+
   const uploadToCloudinary = async (file: File): Promise<string> => {
     const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
     const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
@@ -200,6 +231,12 @@ export default function SiteSettings({ categories, onRefresh }: SiteSettingsProp
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, key: 'logo' | 'hero_image' | 'hero_background_url') => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Validation for Hero Background (Video only as per new request)
+    if (key === 'hero_background_url' && !file.type.startsWith('video/')) {
+      showNotification('error', 'Veuillez sélectionner un fichier vidéo uniquement.');
+      return;
+    }
 
     let setUploading;
     if (key === 'logo') setUploading = setUploadingLogo;
@@ -231,7 +268,9 @@ export default function SiteSettings({ categories, onRefresh }: SiteSettingsProp
         setHeroBgUrl(url);
       }
 
-      showNotification('success', `${key === 'logo' ? 'Logo' : key === 'hero_image' ? 'Image Hero' : 'Média Hero Background'} mis à jour avec succès !`);
+      if (key !== 'hero_background_url') {
+        showNotification('success', `${key === 'logo' ? 'Logo' : 'Image Hero'} mis à jour avec succès !`);
+      }
     } catch (error: any) {
       console.error(`Error updating ${key}:`, error);
       showNotification('error', `Erreur lors de la mise à jour: ${error.message}`);
@@ -372,19 +411,62 @@ export default function SiteSettings({ categories, onRefresh }: SiteSettingsProp
           />
           <p className="text-sm text-stone-500 italic">Format recommandé : JPG ou WebP haute résolution (1920x1080).</p>
         </div>
+      </div>
 
-        {/* Hero Background Media Section */}
-        <div className="bg-white p-8 rounded-2xl border border-stone-200 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 mb-2">
+      {/* Hero Configuration Section */}
+      <div className="bg-white p-8 rounded-2xl border border-stone-200 shadow-sm space-y-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <div className="p-2 bg-stone-100 rounded-lg">
-              <ImageIcon size={20} className="text-stone-600" />
+              <Edit2 size={20} className="text-stone-600" />
             </div>
-            <h3 className="text-xl font-serif font-medium text-stone-900">Média Hero Background</h3>
+            <h3 className="text-xl font-serif font-medium text-stone-900">Configuration du Hero</h3>
           </div>
-          
-          <div className="aspect-video rounded-2xl border border-stone-100 bg-stone-50 overflow-hidden flex items-center justify-center relative group">
-            {heroBgUrl ? (
-              heroBgUrl.match(/\.(mp4|webm|ogg)$/) || heroBgUrl.includes('video/upload') ? (
+          <button
+            onClick={handleSaveHeroSettings}
+            disabled={isSavingHero}
+            className="bg-stone-900 text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-stone-800 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg"
+          >
+            {isSavingHero ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            Enregistrer les modifications
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          {/* Text Inputs */}
+          <div className="space-y-6">
+            <h4 className="text-xs font-bold text-stone-400 uppercase tracking-widest italic border-b border-stone-100 pb-2">Textes du Hero</h4>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Titre du Hero</label>
+                <input
+                  type="text"
+                  value={heroTitle}
+                  onChange={(e) => setHeroTitle(e.target.value)}
+                  placeholder="Ex: REDY COSMÉTIQUE"
+                  className="w-full px-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-stone-900 outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Sous-titre du Hero</label>
+                <textarea
+                  value={heroSubtitle}
+                  onChange={(e) => setHeroSubtitle(e.target.value)}
+                  placeholder="Ex: Révélez votre éclat naturel avec nos soins d'exception."
+                  className="w-full px-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-stone-900 outline-none transition-all h-24 resize-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Video Upload & Preview */}
+          <div className="space-y-6">
+            <h4 className="text-xs font-bold text-stone-400 uppercase tracking-widest italic border-b border-stone-100 pb-2">Vidéo d'arrière-plan</h4>
+            
+            <div className="aspect-video rounded-2xl border border-stone-100 bg-stone-50 overflow-hidden flex items-center justify-center relative group">
+              {heroBgUrl ? (
                 <video 
                   key={heroBgUrl}
                   src={heroBgUrl} 
@@ -395,47 +477,44 @@ export default function SiteSettings({ categories, onRefresh }: SiteSettingsProp
                   className={`w-full h-full object-cover transition-opacity duration-300 ${uploadingHeroBg ? 'opacity-30' : 'opacity-100'}`} 
                 />
               ) : (
-                <img 
-                  key={heroBgUrl}
-                  src={heroBgUrl} 
-                  alt="Hero Background" 
-                  className={`w-full h-full object-cover transition-opacity duration-300 ${uploadingHeroBg ? 'opacity-30' : 'opacity-100'}`} 
-                  referrerPolicy="no-referrer" 
-                />
-              )
-            ) : (
-              <div className="text-stone-300 flex flex-col items-center">
-                <ImageIcon size={48} />
-                <span className="text-xs mt-2">Aucun média background défini</span>
-              </div>
-            )}
+                <div className="text-stone-300 flex flex-col items-center">
+                  <Package size={48} />
+                  <span className="text-xs mt-2">Aucune vidéo définie</span>
+                </div>
+              )}
 
-            {uploadingHeroBg && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[2px]">
-                <Loader2 className="animate-spin text-stone-900" size={32} />
-              </div>
-            )}
+              {uploadingHeroBg && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[2px]">
+                  <Loader2 className="animate-spin text-stone-900" size={32} />
+                </div>
+              )}
 
-            {!uploadingHeroBg && (
-              <div className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <button 
-                  onClick={() => heroBgInputRef.current?.click()}
-                  className="bg-white text-stone-900 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50 transition-all flex items-center gap-2"
-                >
-                  <Upload size={16} />
-                  Changer le média
-                </button>
-              </div>
-            )}
+              {!uploadingHeroBg && (
+                <div className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <button 
+                    onClick={() => heroBgInputRef.current?.click()}
+                    className="bg-white text-stone-900 px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-50 transition-all flex items-center gap-2"
+                  >
+                    <Upload size={16} />
+                    Uploader une vidéo
+                  </button>
+                </div>
+              )}
+            </div>
+            <input 
+              type="file" 
+              ref={heroBgInputRef} 
+              onChange={(e) => handleFileChange(e, 'hero_background_url')} 
+              accept="video/*" 
+              className="hidden" 
+            />
+            <div className="flex items-start gap-2 text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-100">
+              <AlertCircle size={16} className="shrink-0 mt-0.5" />
+              <p className="text-[10px] leading-relaxed">
+                <strong>Important :</strong> Seuls les fichiers vidéo sont acceptés. L'URL sera mise à jour après l'upload, mais n'oubliez pas de cliquer sur "Enregistrer les modifications" pour valider le titre et le sous-titre.
+              </p>
+            </div>
           </div>
-          <input 
-            type="file" 
-            ref={heroBgInputRef} 
-            onChange={(e) => handleFileChange(e, 'hero_background_url')} 
-            accept="image/*,video/*" 
-            className="hidden" 
-          />
-          <p className="text-sm text-stone-500 italic">Format recommandé : MP4, WebM, GIF ou WebP animé. Upload via Cloudinary.</p>
         </div>
       </div>
 

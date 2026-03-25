@@ -8,6 +8,7 @@ export interface Product {
   gallery_urls?: string[];
   video_url?: string;
   category?: string;
+  category_id?: string;
   is_active: boolean;
   created_at: string;
 }
