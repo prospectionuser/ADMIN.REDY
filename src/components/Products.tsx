@@ -244,7 +244,7 @@ export default function Products({ products, categories, onRefresh }: ProductsPr
       <header className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-serif font-medium text-stone-900">Produits</h2>
-          <p className="text-stone-500">Gérez votre catalogue de cosmétiques.</p>
+          <p className="text-stone-500">Gérer votre catalogue de produits</p>
         </div>
         <div className="flex items-center gap-4">
           {notification && (

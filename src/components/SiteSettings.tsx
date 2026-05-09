@@ -540,7 +540,7 @@ export default function SiteSettings({ categories, onRefresh }: SiteSettingsProp
                   type="text"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="Ex: Soins Visage"
+                  placeholder="Ex: Catégorie de votre produit"
                   className="w-full px-4 py-2 rounded-xl border border-stone-200 focus:ring-2 focus:ring-stone-900 focus:border-transparent outline-none"
                 />
               </div>

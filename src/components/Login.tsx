@@ -28,7 +28,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-stone-50 p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-stone-200 p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-serif font-medium text-stone-900 tracking-tight">Redy Admin</h1>
+          <h1 className="text-3xl font-serif font-medium text-stone-900 tracking-tight">CRAVE SOUL Admin</h1>
           <p className="text-stone-500 mt-2">Connectez-vous pour gérer votre boutique</p>
         </div>
 

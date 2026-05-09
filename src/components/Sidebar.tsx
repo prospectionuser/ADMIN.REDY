@@ -37,7 +37,7 @@ export default function Sidebar({ currentView, setView, isOpen, onClose }: Sideb
       }`}>
         <div className="p-8 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-serif font-medium text-white tracking-tight">Redy</h1>
+            <h1 className="text-2xl font-serif font-medium text-white tracking-tight">CRAVE SOUL</h1>
             <p className="text-xs uppercase tracking-widest text-stone-500 mt-1">Administration</p>
           </div>
           <button 

@@ -424,7 +424,7 @@ export default function Orders({ orders, products, onRefresh }: OrdersProps) {
                         {selectedOrder.customer_phone}
                       </div>
                       <a 
-                        href={`https://wa.me/213${selectedOrder.customer_phone.startsWith('0') ? selectedOrder.customer_phone.substring(1) : selectedOrder.customer_phone}?text=${encodeURIComponent(`Bonjour, c'est Redy. Nous préparons votre commande de ${selectedOrder.product?.name || 'votre produit'}. Pouvez-vous nous confirmer votre adresse ?`)}`}
+                        href={`https://wa.me/213${selectedOrder.customer_phone.startsWith('0') ? selectedOrder.customer_phone.substring(1) : selectedOrder.customer_phone}?text=${encodeURIComponent(`Bonjour, c'est CRAVE SOUL. Nous préparons votre commande de ${selectedOrder.product?.name || 'votre produit'}. Pouvez-vous nous confirmer votre adresse ?`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 bg-[#25D366] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#128C7E] transition-colors w-fit"

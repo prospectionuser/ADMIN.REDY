@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from './lib/supabase';
+import { supabase, checkSupabaseConfig } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
@@ -36,19 +36,37 @@ export default function App() {
 
   const fetchData = async () => {
     if (!session) return;
+
+    if (!checkSupabaseConfig()) {
+      console.error('Supabase is not configured properly.');
+      return;
+    }
+
     setDataLoading(true);
     
-    const [productsRes, ordersRes, categoriesRes] = await Promise.all([
-      supabase.from('products').select('*').order('created_at', { ascending: false }),
-      supabase.from('orders').select('*, product:products(*)').order('created_at', { ascending: false }),
-      supabase.from('categories').select('*').order('name', { ascending: true })
-    ]);
+    try {
+      const [productsRes, ordersRes, categoriesRes] = await Promise.all([
+        supabase.from('products').select('*').order('created_at', { ascending: false }),
+        supabase.from('orders').select('*, product:products(*)').order('created_at', { ascending: false }),
+        supabase.from('categories').select('*').order('name', { ascending: true })
+      ]);
 
-    if (productsRes.data) setProducts(productsRes.data);
-    if (ordersRes.data) setOrders(ordersRes.data);
-    if (categoriesRes.data) setCategories(categoriesRes.data);
-    
-    setDataLoading(false);
+      if (productsRes.error) throw productsRes.error;
+      if (ordersRes.error) throw ordersRes.error;
+      if (categoriesRes.error) throw categoriesRes.error;
+
+      if (productsRes.data) setProducts(productsRes.data);
+      if (ordersRes.data) setOrders(ordersRes.data);
+      if (categoriesRes.data) setCategories(categoriesRes.data);
+    } catch (error: any) {
+      console.error('Error fetching data:', error);
+      // If it's a "Failed to fetch" error, it likely means network/config issues
+      if (error.message === 'Failed to fetch') {
+        alert('Impossible de se connecter à la base de données. Veuillez vérifier vos clés Supabase et votre connexion internet.');
+      }
+    } finally {
+      setDataLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -69,8 +87,30 @@ export default function App() {
     return <Login />;
   }
 
+  const isSupabaseConfigured = checkSupabaseConfig();
+
   return (
     <div className="min-h-screen bg-stone-50 flex flex-col md:flex-row">
+      {!isSupabaseConfigured && (
+        <div className="fixed inset-0 z-[100] bg-stone-900/80 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl space-y-4">
+            <h2 className="text-2xl font-serif font-medium text-stone-900">Configuration requise</h2>
+            <p className="text-stone-600">
+              Les clés Supabase (URL et Anon Key) ne sont pas configurées. Veuillez les ajouter dans les paramètres secrets de votre projet.
+            </p>
+            <div className="bg-stone-50 p-4 rounded-xl border border-stone-100 font-mono text-xs space-y-2">
+              <p>VITE_SUPABASE_URL</p>
+              <p>VITE_SUPABASE_ANON_KEY</p>
+            </div>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full bg-stone-900 text-white py-3 rounded-xl font-medium"
+            >
+              Réessayer
+            </button>
+          </div>
+        </div>
+      )}
       <Sidebar 
         currentView={currentView} 
         setView={(view) => {
@@ -83,7 +123,7 @@ export default function App() {
       
       {/* Mobile Header */}
       <div className="md:hidden bg-white border-b border-stone-200 px-6 py-4 flex items-center justify-between sticky top-0 z-40">
-        <h1 className="text-xl font-serif font-medium text-stone-900">Redy</h1>
+        <h1 className="text-xl font-serif font-medium text-stone-900">CRAVE SOUL</h1>
         <button 
           onClick={() => setIsSidebarOpen(true)}
           className="p-2 text-stone-500 hover:bg-stone-100 rounded-lg transition-colors"
